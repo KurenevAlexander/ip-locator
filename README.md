@@ -104,6 +104,32 @@ poetry run python check_flow.py
 
 ---
 
+## Running in Docker
+
+Build the image and run a container:
+
+```bash
+docker build -t ip-locator .
+docker run --rm -p 8000:8000 ip-locator
+```
+
+The service then becomes available at `http://localhost:8000`.
+
+To override configuration at runtime, pass environment variables with `-e`:
+
+```bash
+docker run --rm -p 8000:8000 \
+    -e GEO_PROVIDER=ipapi_co \
+    -e GEO_API_KEY=your-key-here \
+    ip-locator
+```
+
+The `Dockerfile` is intentionally a single-stage build optimised for clarity.
+See `docs/DEVELOPMENT_NOTES.md` for the multi-stage / non-root / healthcheck
+hardening that would apply in production.
+
+---
+
 ## Project structure
 
 ```

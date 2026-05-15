@@ -1,0 +1,31 @@
+# Files and directories excluded from the Docker build context.
+
+# Version control
+.git
+.gitignore
+
+# Python caches and virtualenvs
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+.venv
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# Local secrets — must never be baked into an image
+.env
+
+# Development-only files
+tests
+docs
+check_flow.py
+
+# Docker meta-files
+Dockerfile
+.dockerignore
