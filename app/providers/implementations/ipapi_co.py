@@ -110,20 +110,28 @@ class IpapiCoProvider(GeoProvider):
             logger.info("ipapi.co: no data for IP", extra={"ip": ip, "reason": reason})
             raise LocationNotFoundError(ip)
 
-        logger.debug("ipapi.co lookup successful", extra={"ip": ip, "country": data.get("country_name")})
+        logger.debug(
+            "ipapi.co lookup successful",
+            extra={"ip": ip, "country": data.get("country_name")},
+        )
+
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+        coordinates = Coordinates(lat=lat, lon=lon) if lat is not None and lon is not None else None
+        org = data.get("org")
 
         return GeolocationResponse(
             ip=data["ip"],
             country=data["country_name"],
             country_code=data["country_code"],
-            region=data["region"],
-            region_code=data.get("region_code", ""),
-            city=data["city"],
-            zip_code=data.get("postal", ""),
-            coordinates=Coordinates(lat=data["latitude"], lon=data["longitude"]),
-            timezone=data["timezone"],
-            isp=data.get("org", ""),
-            org=data.get("org", ""),
+            region=data.get("region"),
+            region_code=data.get("region_code"),
+            city=data.get("city"),
+            zip_code=data.get("postal"),
+            coordinates=coordinates,
+            timezone=data.get("timezone"),
+            isp=org,
+            org=org,
             ip_version=addr.version,
         )
 

@@ -96,21 +96,26 @@ class MaxMindProvider(GeoProvider):
         except geoip2.errors.AddressNotFoundError as exc:
             raise LocationNotFoundError(ip) from exc
 
+        # 'country' is a required field, otherwise Location Not Found
+        if not record.country.name or not record.country.iso_code:
+            raise LocationNotFoundError(ip)
+
+        lat = record.location.latitude
+        lon = record.location.longitude
+        coordinates = Coordinates(lat=lat, lon=lon) if lat is not None and lon is not None else None
+
         return GeolocationResponse(
             ip=ip,
-            country=record.country.name or "",
-            country_code=record.country.iso_code or "",
-            region=record.subdivisions.most_specific.name or "",
-            region_code=record.subdivisions.most_specific.iso_code or "",
-            city=record.city.name or "",
-            zip_code=record.postal.code or "",
-            coordinates=Coordinates(
-                lat=record.location.latitude or 0.0,
-                lon=record.location.longitude or 0.0,
-            ),
-            timezone=record.location.time_zone or "",
-            isp="",   # GeoLite2-City does not include ISP data
-            org="",
+            country=record.country.name,
+            country_code=record.country.iso_code,
+            region=record.subdivisions.most_specific.name,
+            region_code=record.subdivisions.most_specific.iso_code,
+            city=record.city.name,
+            zip_code=record.postal.code,
+            coordinates=coordinates,
+            timezone=record.location.time_zone,
+            isp=None,
+            org=None,
             ip_version=addr.version,
         )
 

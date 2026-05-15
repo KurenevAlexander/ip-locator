@@ -1,10 +1,20 @@
 """HTTP error response model for the geolocation API."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorResponse(BaseModel):
     """Consistent error response returned by all endpoints on failure."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "error": "invalid_ip",
+                "message": "'999.x.x.x' is not a valid IP address.",
+                "detail": "Both IPv4 and IPv6 addresses are accepted.",
+            }
+        }
+    )
 
     error: str = Field(
         ...,

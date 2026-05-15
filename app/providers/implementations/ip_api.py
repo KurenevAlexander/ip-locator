@@ -104,18 +104,20 @@ class IpApiProvider(GeoProvider):
 
         logger.debug("ip-api.com lookup successful", extra={"ip": ip, "country": data["country"]})
 
+        # ip-api.com returns empty strings for unknown fields; normalise to None
+        # so consumers can distinguish "missing" from a meaningful empty value.
         return GeolocationResponse(
             ip=data["query"],
             country=data["country"],
             country_code=data["countryCode"],
-            region=data["regionName"],
-            region_code=data["region"],
-            city=data["city"],
-            zip_code=data["zip"],
+            region=data["regionName"] or None,
+            region_code=data["region"] or None,
+            city=data["city"] or None,
+            zip_code=data["zip"] or None,
             coordinates=Coordinates(lat=data["lat"], lon=data["lon"]),
-            timezone=data["timezone"],
-            isp=data["isp"],
-            org=data["org"],
+            timezone=data["timezone"] or None,
+            isp=data["isp"] or None,
+            org=data["org"] or None,
             ip_version=addr.version,
         )
 
