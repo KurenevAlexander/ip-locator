@@ -120,7 +120,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(ProviderUnavailableError)
-    async def handle_provider_unavailable(_: Request, exc: ProviderUnavailableError) -> JSONResponse:
+    async def handle_provider_unavailable(
+        _: Request, exc: ProviderUnavailableError
+    ) -> JSONResponse:
         logger.error("Provider unavailable: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=503,

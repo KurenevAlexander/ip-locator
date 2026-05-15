@@ -16,7 +16,10 @@ from app.providers.base import GeoProvider
 logger = logging.getLogger(__name__)
 
 # Fields requested from ip-api.com — keeps the response payload minimal
-_FIELDS = "status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,query"
+_FIELDS = (
+    "status,message,country,countryCode,region,regionName,"
+    "city,zip,lat,lon,timezone,isp,org,query"
+)
 _BASE_URL = "http://ip-api.com/json"
 
 

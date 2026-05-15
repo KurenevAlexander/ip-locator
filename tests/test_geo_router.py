@@ -85,7 +85,10 @@ async def test_get_geolocation_private_ip(app_with_provider):
 @pytest.mark.asyncio
 async def test_get_geolocation_not_found(app_with_provider, mock_ip_api):
     mock_ip_api.get("/json/8.8.8.8").mock(
-        return_value=Response(200, json={"status": "fail", "message": "private range", "query": "8.8.8.8"})
+        return_value=Response(
+            200,
+            json={"status": "fail", "message": "private range", "query": "8.8.8.8"},
+        )
     )
     async with make_client(app_with_provider) as client:
         response = await client.get("/v1/geo/8.8.8.8")

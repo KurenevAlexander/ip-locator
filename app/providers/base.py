@@ -67,7 +67,7 @@ class GeoProvider(ABC):
         try:
             addr = ipaddress.ip_address(ip)
         except ValueError:
-            raise InvalidIPError(ip)
+            raise InvalidIPError(ip) from None
 
         if addr.is_private or addr.is_reserved or addr.is_loopback or addr.is_link_local:
             raise PrivateIPError(ip)

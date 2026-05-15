@@ -83,7 +83,10 @@ async def test_locate_private_ip(provider):
 async def test_locate_fail_status(provider):
     prov, mock = provider
     mock.get("/json/8.8.8.8").mock(
-        return_value=Response(200, json={"status": "fail", "message": "private range", "query": "8.8.8.8"})
+        return_value=Response(
+            200,
+            json={"status": "fail", "message": "private range", "query": "8.8.8.8"},
+        )
     )
     with pytest.raises(LocationNotFoundError):
         await prov.locate("8.8.8.8")

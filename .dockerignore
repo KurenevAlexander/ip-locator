@@ -23,7 +23,6 @@ __pycache__
 
 # Development-only files
 tests
-docs
 check_flow.py
 
 # Docker meta-files

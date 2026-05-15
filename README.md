@@ -1,6 +1,6 @@
 # IP Geolocation Service
 
-A production-quality FastAPI microservice that returns geolocation information for IPv4 and IPv6 addresses. Backed by a configurable provider — by default uses [ip-api.com](http://ip-api.com) (free, no key required).
+A FastAPI microservice that returns geolocation information for IPv4 and IPv6 addresses. Backed by a configurable provider — by default uses [ip-api.com](http://ip-api.com) (free, no key required).
 
 ---
 
@@ -125,7 +125,7 @@ docker run --rm -p 8000:8000 \
 ```
 
 The `Dockerfile` is intentionally a single-stage build optimised for clarity.
-See `docs/DEVELOPMENT_NOTES.md` for the multi-stage / non-root / healthcheck
+See `DEVELOPMENT_NOTES.md` for the multi-stage / non-root / healthcheck
 hardening that would apply in production.
 
 ---
@@ -153,16 +153,16 @@ ip-locator/
 │   ├── dependencies.py         # get_client_ip() DI function
 │   └── main.py                 # App factory, lifespan, exception handlers
 ├── tests/
-│   ├── test_config.py
 │   ├── test_dependencies.py
 │   ├── test_factory.py
 │   ├── test_geo_router.py          # Integration tests (router layer)
 │   ├── test_ip_api_provider.py     # Unit tests (ip-api.com)
 │   └── test_ipapi_co_provider.py   # Unit tests (ipapi.co)
-├── docs/
-│   └── DEVELOPMENT_NOTES.md
 ├── check_flow.py               # End-to-end smoke test
+├── Dockerfile
+├── .dockerignore
 ├── .env.example
+├── DEVELOPMENT_NOTES.md
 └── pyproject.toml
 ```
 
@@ -182,106 +182,36 @@ GEO_API_KEY=your-key-here
 
 ## API Design Decisions
 
-This section summarises the key decisions behind the API contract.
-A more detailed reflection (including alternatives considered and what would
-change for a production deployment) lives in
-[`docs/DEVELOPMENT_NOTES.md`](docs/DEVELOPMENT_NOTES.md).
-
-### REST style and resource model
-
 The service exposes a single resource — **geolocation** — addressed by an IP
-address. Two read operations are provided:
+address. Two read-only endpoints are provided:
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /v1/geo/{ip}` | Lookup by explicit IP address |
-| `GET /v1/geo/me`   | Lookup for the caller's own IP (auto-detected) |
+- `GET /v1/geo/{ip}` — lookup by an explicit IP address;
+- `GET /v1/geo/me` — lookup for the caller's own IP (auto-detected from
+  `X-Forwarded-For` → `X-Real-IP` → direct connection).
 
-Both endpoints return the same response shape (`GeolocationResponse`) — the
-only difference is **how the IP is supplied**. Keeping a single response model
-across both endpoints lets clients share parsing code and keeps the OpenAPI
-spec small.
+Both endpoints return the same `GeolocationResponse` shape — clients share
+parsing code regardless of which endpoint they call. The API is versioned via
+a URL prefix (`/v1`) so future breaking changes can ship side-by-side
+as `/v2`.
 
-### Versioning
+In the response, only `ip`, `country`, `country_code` and `ip_version` are
+guaranteed. All other fields (`region`, `city`, `coordinates`, `timezone`,
+`isp`, …) are returned as `null` when the upstream source has no data — this
+keeps "missing" and "empty" distinguishable.
 
-All endpoints live under `/v1`. URL-prefix versioning is the simplest
-mechanism that survives breaking changes without disrupting existing clients:
-a future `/v2` can ship side-by-side and clients migrate on their own
-schedule. Header-based versioning was considered but rejected as harder to
-discover from Swagger UI and harder to cache through HTTP intermediaries.
+All failures use a single envelope: `{ "error", "message", "detail" }`.
+Validation issues map to `400`, missing data to `404`, upstream rate-limit
+to `429`, upstream errors/timeouts to `503`. Domain exceptions are raised
+inside providers and converted to HTTP in one place (`app/main.py`), so
+providers and routers stay free of HTTP concerns.
 
-### Idempotency, safety and caching
+The geolocation provider is chosen at startup via the `GEO_PROVIDER`
+environment variable. `GeoProvider` is an ABC with two implementations
+(`ip-api.com`, `ipapi.co`). Adding a third is a one-file change — see the
+docstring in `app/providers/factory.py`.
 
-Both endpoints are `GET`, side-effect-free and **idempotent**. They are also
-inherently cacheable: a given IP's geolocation changes rarely. The current
-implementation does not cache, but the contract leaves the door open — any
-HTTP cache (CDN, reverse proxy) can be placed in front of the service without
-breaking semantics.
-
-### Response shape
-
-`GeolocationResponse` fields fall into two tiers:
-
-- **Required** (`ip`, `country`, `country_code`, `ip_version`) — guaranteed to
-  be present on a successful response.
-- **Optional** (`region`, `city`, `zip_code`, `coordinates`, `timezone`, `isp`,
-  `org`, …) — returned as `null` when the upstream source has no data.
-
-Distinguishing **missing data** from **empty value** matters: a client receiving
-`{"city": ""}` cannot tell whether the city is genuinely unknown or whether the
-upstream returned an empty string. Explicit `null` removes that ambiguity. The
-schema is documented in the OpenAPI spec with a full example payload.
-
-### Error contract
-
-All failures return the same `ErrorResponse` envelope:
-
-```json
-{ "error": "invalid_ip", "message": "...", "detail": "..." }
-```
-
-| HTTP | `error` code | Cause |
-|---|---|---|
-| 400 | `invalid_ip` | String is not a valid IPv4/IPv6 address |
-| 400 | `private_ip` | Address is private, loopback or reserved |
-| 404 | `location_not_found` | Upstream has no record for the address |
-| 429 | `rate_limit_exceeded` | Upstream provider rate-limited the request |
-| 503 | `provider_unavailable` | Upstream timeout / connection error / unexpected status |
-
-The machine-readable `error` code is the **stable** part of the contract;
-`message` and `detail` are human-friendly and may evolve. HTTP status codes
-follow standard semantics so generic HTTP-aware clients can react correctly
-without parsing the body.
-
-Validation, business and upstream failures are raised as domain exceptions
-from the providers and converted to HTTP responses in a single place
-(`app/main.py`). This keeps providers and routers free of HTTP concerns and
-guarantees a consistent error shape across all endpoints.
-
-### Provider abstraction
-
-`GeoProvider` is an `ABC` with two implementations (`ip-api.com`,
-`ipapi.co`). The active provider is chosen at startup via the `GEO_PROVIDER`
-environment variable, and the HTTP client is created once in the lifespan
-context so connection pools are shared across requests. Adding a new
-provider is a three-step change documented in the docstring of
-`app/providers/factory.py`.
-
-### Client IP detection (`/v1/geo/me`)
-
-Resolution order: `X-Forwarded-For` (leftmost entry) → `X-Real-IP` →
-`request.client.host` → `127.0.0.1` fallback. The current implementation
-trusts forwarded headers unconditionally; production-grade hardening
-(trusted-proxy whitelist, using the **rightmost** entry of the chain) is
-listed in `DEVELOPMENT_NOTES.md` as a next step.
-
-### What is intentionally **not** in the API
-
-- No write endpoints — the service is read-only.
-- No batch endpoint (`POST /v1/geo/lookup` with a list of IPs) — out of scope
-  for the assignment; would be the obvious next addition.
-- No authentication — the service is a thin gateway to public data. AuthN/Z
-  belongs at the edge (API gateway, mTLS, JWT).
+A more detailed reflection (alternatives considered, production-deploy
+adjustments) lives in [`DEVELOPMENT_NOTES.md`](DEVELOPMENT_NOTES.md).
 
 ---
 
