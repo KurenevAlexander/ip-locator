@@ -161,9 +161,9 @@ async def test_locate_timeout(provider):
 
 
 async def test_api_key_is_forwarded_as_query_param():
-    """When configured with an API key, it must be sent as ?key=..."""
+    """When configured with an API key, it must be sent as ?token=..."""
     with respx.mock(base_url="https://ipapi.co") as mock:
-        route = mock.get("/8.8.8.8/json/", params={"key": "secret-key"}).mock(
+        route = mock.get("/8.8.8.8/json/", params={"token": "secret-key"}).mock(
             return_value=Response(200, json=_SUCCESS_PAYLOAD)
         )
         prov = IpapiCoProvider(

@@ -70,7 +70,7 @@ class IpapiCoProvider(GeoProvider):
 
         params: dict[str, Any] = {}
         if self._api_key:
-            params["key"] = self._api_key
+            params["token"] = self._api_key
 
         try:
             response = await self._client.get(f"{_BASE_URL}/{ip}/json/", params=params)
