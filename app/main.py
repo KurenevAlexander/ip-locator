@@ -70,13 +70,7 @@ def create_app() -> FastAPI:
 
     app.include_router(geo.router)
 
-    # ------------------------------------------------------------------
     # Exception handlers
-    # All domain exceptions are caught here and converted to JSON responses
-    # with consistent structure. Logging is centralised here so providers
-    # and routers stay free of HTTP and logging concerns.
-    # ------------------------------------------------------------------
-
     @app.exception_handler(InvalidIPError)
     async def handle_invalid_ip(_: Request, exc: InvalidIPError) -> JSONResponse:
         logger.debug("Invalid IP address rejected", extra={"ip": exc.ip})
@@ -127,7 +121,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ProviderUnavailableError)
     async def handle_provider_unavailable(_: Request, exc: ProviderUnavailableError) -> JSONResponse:
-        logger.error("Provider unavailable: %s", exc)
+        logger.error("Provider unavailable: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=503,
             content=ErrorResponse(
@@ -145,7 +139,4 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-
-    # Run from the project root: python -m app.main
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
-
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
