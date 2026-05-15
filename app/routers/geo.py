@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Path, Request
 
 from app.dependencies import get_client_ip
 from app.models.errors import ErrorResponse
@@ -28,11 +28,22 @@ def _get_provider(request: Request) -> GeoProvider:
 ProviderDep = Annotated[GeoProvider, Depends(_get_provider)]
 ClientIPDep = Annotated[str, Depends(get_client_ip)]
 
+# Path parameter declared once — reused only by /{ip}, but kept here so the
+# OpenAPI examples and description stay close to other endpoint metadata.
+IpPathParam = Annotated[
+    str,
+    Path(
+        description="Public IPv4 or IPv6 address to look up.",
+        examples=["8.8.8.8", "1.1.1.1", "2001:4860:4860::8888"],
+    ),
+]
+
 
 @router.get(
     "/me",
     response_model=GeolocationResponse,
     responses=_error_responses,
+    operation_id="get_my_geolocation",
     summary="Look up geolocation for the requesting client",
     description=(
         "Automatically detects the caller's IP address from the request "
@@ -49,13 +60,13 @@ async def get_my_geolocation(provider: ProviderDep, client_ip: ClientIPDep) -> G
     "/{ip}",
     response_model=GeolocationResponse,
     responses=_error_responses,
+    operation_id="get_geolocation_by_ip",
     summary="Look up geolocation for a specific IP address",
     description=(
         "Returns geolocation information (country, region, city, coordinates, timezone, ISP) "
         "for the supplied IPv4 or IPv6 address."
     ),
 )
-async def get_geolocation(ip: str, provider: ProviderDep) -> GeolocationResponse:
+async def get_geolocation(ip: IpPathParam, provider: ProviderDep) -> GeolocationResponse:
     """Look up geolocation data for the provided IP address."""
     return await provider.locate(ip)
-
