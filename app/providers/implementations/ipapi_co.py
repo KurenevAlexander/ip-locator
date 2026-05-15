@@ -97,7 +97,17 @@ class IpapiCoProvider(GeoProvider):
         data: _IpapiCoResponse = response.json()
 
         if data.get("error"):
-            logger.info("ipapi.co: no data for IP", extra={"ip": ip, "reason": data.get("reason")})
+            reason = data.get("reason")
+            # ipapi.co signals rate limiting with HTTP 200 + {"error": true,
+            # "reason": "RateLimited"} rather than HTTP 429. Detect it here so
+            # the client receives the correct 429 response instead of a 404.
+            if reason in {"RateLimited", "Throttled"}:
+                logger.warning(
+                    "ipapi.co rate limit exceeded (signalled via error payload)",
+                    extra={"ip": ip, "reason": reason},
+                )
+                raise RateLimitError(f"ipapi.co rate limit exceeded: {reason}.")
+            logger.info("ipapi.co: no data for IP", extra={"ip": ip, "reason": reason})
             raise LocationNotFoundError(ip)
 
         logger.debug("ipapi.co lookup successful", extra={"ip": ip, "country": data.get("country_name")})
