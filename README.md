@@ -8,7 +8,7 @@ A production-quality FastAPI microservice that returns geolocation information f
 
 - `GET /v1/geo/{ip}` — geolocation for any public IPv4 or IPv6 address
 - `GET /v1/geo/me` — auto-detects the caller's IP (`X-Forwarded-For` → `X-Real-IP` → direct connection)
-- Pluggable provider architecture — switch between **ip-api.com**, **ipapi.co**, or a local **MaxMind** database via a single env variable
+- Pluggable provider architecture — switch between **ip-api.com** and **ipapi.co** via a single env variable
 - Consistent JSON error responses for all failure cases (invalid IP, private IP, rate limit, provider unavailable)
 - Interactive API docs at `/docs` (Swagger UI) and `/redoc` (ReDoc)
 
@@ -49,9 +49,8 @@ The service works out of the box with defaults — no configuration required for
 
 | Variable | Default | Description |
 |---|---|---|
-| `GEO_PROVIDER` | `ip_api` | Provider: `ip_api` \| `ipapi_co` \| `maxmind` |
+| `GEO_PROVIDER` | `ip_api` | Provider: `ip_api` \| `ipapi_co` |
 | `GEO_API_KEY` | _(none)_ | API key for `ipapi_co` paid plan |
-| `MAXMIND_DB_PATH` | `GeoLite2-City.mmdb` | Path to MaxMind `.mmdb` file |
 | `HTTP_TIMEOUT` | `5.0` | Outbound HTTP timeout in seconds |
 | `LOG_LEVEL` | `INFO` | Log level: `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 
@@ -122,16 +121,18 @@ ip-locator/
 │   │   ├── factory.py          # create_provider() — reads config, returns provider
 │   │   └── implementations/
 │   │       ├── ip_api.py       # ip-api.com provider
-│   │       ├── ipapi_co.py     # ipapi.co provider
-│   │       └── maxmind.py      # MaxMind local DB provider
+│   │       └── ipapi_co.py     # ipapi.co provider
 │   ├── routers/
 │   │   └── geo.py              # GET /v1/geo/{ip}, GET /v1/geo/me
 │   ├── dependencies.py         # get_client_ip() DI function
 │   └── main.py                 # App factory, lifespan, exception handlers
 ├── tests/
-│   ├── conftest.py
-│   ├── test_geo_router.py      # Integration tests (router layer)
-│   └── test_ip_api_provider.py # Unit tests (provider layer)
+│   ├── test_config.py
+│   ├── test_dependencies.py
+│   ├── test_factory.py
+│   ├── test_geo_router.py          # Integration tests (router layer)
+│   ├── test_ip_api_provider.py     # Unit tests (ip-api.com)
+│   └── test_ipapi_co_provider.py   # Unit tests (ipapi.co)
 ├── docs/
 │   └── DEVELOPMENT_NOTES.md
 ├── check_flow.py               # End-to-end smoke test
@@ -149,19 +150,7 @@ Set `GEO_PROVIDER` in `.env` or as an environment variable:
 # Use ipapi.co (optional key for higher quota)
 GEO_PROVIDER=ipapi_co
 GEO_API_KEY=your-key-here
-
-# Use local MaxMind database (requires geoip2 extra and .mmdb file)
-GEO_PROVIDER=maxmind
-MAXMIND_DB_PATH=/path/to/GeoLite2-City.mmdb
 ```
-
-Install the MaxMind extra:
-
-```bash
-poetry install --extras maxmind
-```
-
-Download a free database from [MaxMind](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) (requires free registration).
 
 ---
 

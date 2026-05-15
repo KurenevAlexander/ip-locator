@@ -22,7 +22,7 @@ def create_provider(settings: Settings) -> GeoProvider:
 
     Args:
         settings: Application settings carrying ``geo_provider``,
-            ``geo_api_key``, ``maxmind_db_path``, and ``http_timeout``.
+            ``geo_api_key``, and ``http_timeout``.
 
     Returns:
         A ready-to-use :class:`~app.providers.base.GeoProvider` instance.
@@ -47,13 +47,8 @@ def create_provider(settings: Settings) -> GeoProvider:
                 api_key=settings.geo_api_key,
             )
 
-        case "maxmind":
-            from app.providers.implementations.maxmind import MaxMindProvider
-
-            return MaxMindProvider(db_path=settings.maxmind_db_path)
-
         case _:
             raise ValueError(
                 f"Unknown GEO_PROVIDER '{settings.geo_provider}'. "
-                "Supported values: ip_api, ipapi_co, maxmind."
+                "Supported values: ip_api, ipapi_co."
             )

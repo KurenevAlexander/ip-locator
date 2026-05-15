@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         description=(
             "A microservice that returns geolocation information for IPv4 and IPv6 addresses. "
-            "Backed by a configurable provider (ip-api.com, ipapi.co, or a local MaxMind database)."
+            "Backed by a configurable third-party provider (ip-api.com or ipapi.co)."
         ),
         lifespan=lifespan,
     )
